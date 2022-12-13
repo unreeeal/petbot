@@ -38,10 +38,15 @@ System commands
 
 
 There 3 default spyer\informer\watcher
+
 One  checks if a phone number is in stock.
+
 One checks if the dollar-ruble rate is more than 65.
+
 One just send datetime now every minure
 
 Informers commands
+
 /spyer all  returns list of all spyers
+
 /spyer stop {name}  stops spyer by name
