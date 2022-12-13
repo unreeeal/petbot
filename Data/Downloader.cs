@@ -42,7 +42,6 @@ namespace Data
 
         private static string MakeRequest(bool isGet, string url, string uploadData, WebHeaderCollection headers, Encoding encoding)
         {
-            _logger.Error("Test");
             if (string.IsNullOrEmpty(url))
             {
                 _logger.Error("Can't get EMPTY URL");

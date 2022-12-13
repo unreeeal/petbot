@@ -40,6 +40,7 @@ namespace PetBot.CommandHandlers
 
                     else
                     {
+
                         return db.GetExpensesOverview((int)number);
                     }
 

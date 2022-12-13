@@ -2,6 +2,7 @@
 using Data.Currency.InfoClasses;
 using NLog;
 using NLog.Config;
+using PetBot.CommandHandlers;
 using System;
 
 namespace PetBot
@@ -13,6 +14,7 @@ namespace PetBot
 
         static void Main(string[] args)
         {
+
 
 
             LogManager.Configuration = new XmlLoggingConfiguration("NLog.config");

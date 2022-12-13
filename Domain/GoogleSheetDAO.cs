@@ -1,5 +1,8 @@
 ﻿using Domain.Models;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using NLog;
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
@@ -14,10 +17,10 @@ namespace Domain
 
         private readonly string _scriptUrl;
         private const int REQUEST_TRIES = 3;
-
+        private readonly ILogger _logger = LogManager.GetCurrentClassLogger();
         public GoogleSheetDAO(string scriptId)
         {
-            _scriptUrl= $"https://script.google.com/macros/s/{_scriptUrl}/exec";
+            _scriptUrl= $"https://script.google.com/macros/s/{scriptId}/exec";
         }
 
         public string GetExpensesOverview(int daysFromNow)
@@ -26,21 +29,26 @@ namespace Domain
             var queryParams = new NameValueCollection();
             queryParams.Add("daysFromNow", daysFromNow.ToString());
             var json = MakeRequest(queryParams);
-
-            var arr = JArray.Parse(json);
+            JArray arr;
+            try
+            {
+                arr=JArray.Parse(json);
+            }
+            catch (JsonReaderException ex)
+            {
+                _logger.Error(ex, "can't parse json");
+                return null;
+            }
             var list = new List<ExpenseModel>(arr.Count);
             foreach (var line in arr)
             {
                 var mod = line.ToObject<ExpenseModel>();
-                //mod.Date = DateTime.Parse(line["Date"].ToString());
-                //mod.Category = line["Name"].ToString();
-                //mod.Price = double.Parse(line["Price"].ToString(), CultureInfo.InvariantCulture);
-                //mod.Currency = line["Currency"].ToString();
                 list.Add(mod);
 
 
             }
-
+            var untilDate = DateTime.Now.AddDays(-daysFromNow);
+            list = list.Where(x => x.Date > untilDate).ToList();
             StringBuilder sb = new StringBuilder();
 
             foreach (var group in list.GroupBy(x => x.Category))
@@ -64,20 +72,27 @@ namespace Domain
             queryParams.Add("action", "add");
             queryParams.Add("category", mod.Category);
             queryParams.Add("price", mod.Price.ToString());
-            return MakeRequest(queryParams);
+            return MakeRequest(queryParams,true);
         }
 
 
- 
 
 
-        private string MakeRequest(NameValueCollection queryParams)
+
+        private string MakeRequest(NameValueCollection queryParams, bool asPost=false)
         {
+            string url;
+            if (asPost)
+                url = _scriptUrl;
+            else
+            {
             //a trick to get inner http collection with needed ToString method,
             //Can't call queryParams.ToString() directly it returns...
-            var valCollection = HttpUtility.ParseQueryString(string.Empty);
-            valCollection.Add(queryParams);
-            var url = _scriptUrl + "?" + valCollection.ToString();
+            
+                var valCollection = HttpUtility.ParseQueryString(string.Empty);
+                valCollection.Add(queryParams);
+            url = _scriptUrl + "?" + valCollection.ToString();
+            }
 
 
             using (WebClient wb = new WebClient())
@@ -87,14 +102,17 @@ namespace Domain
                 {
                     try
                     {
+                        if(!asPost)
                         return wb.DownloadString(url);
+                        byte[] responsebytes = wb.UploadValues(url, "POST", queryParams);
+                        return Encoding.UTF8.GetString(responsebytes);
 
 
                     }
-                    catch (WebException)
+                    catch (WebException ex)
                     {
 
-
+                        _logger.Error(ex, "Can't get this url" + url);
                     } 
                 }
 
